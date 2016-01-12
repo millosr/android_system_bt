@@ -709,7 +709,7 @@ void bta_sys_disable(tBTA_SYS_HW_MODULE module)
             return;
     }
 
-    for ( ; bta_id <= bta_id_max; bta_id++)
+    for ( ; bta_id < bta_id_max; bta_id++)
     {
         if (bta_sys_cb.reg[bta_id] != NULL)
         {

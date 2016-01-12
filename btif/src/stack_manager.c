@@ -43,6 +43,9 @@ static thread_t *management_thread;
 static bool stack_is_initialized;
 // If running, the stack is fully up and able to bluetooth.
 static bool stack_is_running;
+#ifdef BOARD_HAVE_FMRADIO_BCM
+static bool radio_is_running;
+#endif
 
 static void event_init_stack(void *context);
 static void event_start_up_stack(void *context);
@@ -51,6 +54,13 @@ static void event_clean_up_stack(void *context);
 
 static void event_signal_stack_up(void *context);
 static void event_signal_stack_down(void *context);
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+static void event_start_up_radio(void *context);
+static void event_shut_down_radio(void *context);
+
+static future_t *radio_future;
+#endif
 
 // Unvetted includes/imports, etc which should be removed or vetted in the future
 static future_t *hack_future;
@@ -85,6 +95,26 @@ static bool get_stack_is_running(void) {
   return stack_is_running;
 }
 
+#ifdef BOARD_HAVE_FMRADIO_BCM
+static bool start_up_radio(void) {
+  radio_future = future_new();
+  thread_post(management_thread, event_start_up_radio, NULL);
+  future_await(radio_future);
+  return radio_is_running;
+}
+
+static bool shut_down_radio(void) {
+  radio_future = future_new();
+  thread_post(management_thread, event_shut_down_radio, NULL);
+  future_await(radio_future);
+  return !radio_is_running;
+}
+
+static bool get_radio_is_running(void) {
+  return radio_is_running;
+}
+#endif
+
 // Internal functions
 
 // Synchronous function to initialize the stack
@@ -100,6 +130,11 @@ static void event_init_stack(void *context) {
 
     // stack init is synchronous, so no waiting necessary here
     stack_is_initialized = true;
+
+    stack_is_running = false;
+#ifdef BOARD_HAVE_FMRADIO_BCM
+    radio_is_running = false;
+#endif
   }
 
   if (semaphore)
@@ -126,9 +161,19 @@ static void event_start_up_stack(UNUSED_ATTR void *context) {
   LOG_DEBUG("%s is bringing up the stack.", __func__);
   hack_future = future_new();
 
+#ifdef BOARD_HAVE_FMRADIO_BCM
+  if (!radio_is_running) {
+    // Include this for now to put btif config into a shutdown-able state
+    module_start_up(get_module(BTIF_CONFIG_MODULE));
+    bte_main_enable();
+  } else {
+    btif_transfer_context(btif_init_ok, 1, NULL, 0, NULL);
+  }
+#else
   // Include this for now to put btif config into a shutdown-able state
   module_start_up(get_module(BTIF_CONFIG_MODULE));
   bte_main_enable();
+#endif
 
   if (future_await(hack_future) != FUTURE_SUCCESS) {
     stack_is_running = true; // So stack shutdown actually happens
@@ -152,11 +197,24 @@ static void event_shut_down_stack(UNUSED_ATTR void *context) {
   hack_future = future_new();
   stack_is_running = false;
 
+#ifdef BOARD_HAVE_FMRADIO_BCM
+  if (!radio_is_running) {
+    btif_disable_bluetooth();
+    module_shut_down(get_module(BTIF_CONFIG_MODULE));
+
+    future_await(hack_future);
+    module_shut_down(get_module(CONTROLLER_MODULE)); // Doesn't do any work, just puts it in a restartable state
+  } else {
+    btif_disable_bluetooth();
+    future_await(hack_future);
+  }
+#else
   btif_disable_bluetooth();
   module_shut_down(get_module(BTIF_CONFIG_MODULE));
 
   future_await(hack_future);
   module_shut_down(get_module(CONTROLLER_MODULE)); // Doesn't do any work, just puts it in a restartable state
+#endif
 
   LOG_DEBUG("%s finished.", __func__);
   btif_thread_post(event_signal_stack_down, NULL);
@@ -203,6 +261,58 @@ static void event_signal_stack_down(UNUSED_ATTR void *context) {
   HAL_CBACK(bt_hal_cbacks, adapter_state_changed_cb, BT_STATE_OFF);
 }
 
+#ifdef BOARD_HAVE_FMRADIO_BCM
+static void event_start_up_radio(void *context) {
+  if (radio_is_running) {
+    LOG_DEBUG("%s radio already brought up.", __func__);
+    return;
+  }
+
+  ensure_stack_is_initialized();
+
+  LOG_DEBUG("%s is bringing up the radio.", __func__);
+  radio_is_running = true;
+
+  if (!stack_is_running) {
+    hack_future = future_new();
+
+    // Include this for now to put btif config into a shutdown-able state
+    module_start_up(get_module(BTIF_CONFIG_MODULE));
+    bte_main_enable();
+
+    if (future_await(hack_future) != FUTURE_SUCCESS) {
+      event_shut_down_radio(NULL);
+      return;
+    }
+  }
+
+  LOG_DEBUG("%s finished", __func__);
+  future_ready(radio_future, FUTURE_SUCCESS);
+}
+
+static void event_shut_down_radio(void *context) {
+  if (!radio_is_running) {
+    LOG_DEBUG("%s radio is already brought down.", __func__);
+    return;
+  }
+
+  LOG_DEBUG("%s is bringing down the radio.", __func__);
+  radio_is_running = false;
+
+  if (!stack_is_running) {
+    hack_future = future_new();
+    btif_disable_bluetooth_evt();
+    future_await(hack_future);
+
+    module_shut_down(get_module(BTIF_CONFIG_MODULE));
+    module_shut_down(get_module(CONTROLLER_MODULE)); // Doesn't do any work, just puts it in a restartable state
+  }
+
+  LOG_DEBUG("%s finished.", __func__);
+  future_ready(radio_future, FUTURE_SUCCESS);
+}
+#endif
+
 static void ensure_manager_initialized(void) {
   if (management_thread)
     return;
@@ -220,7 +330,14 @@ static const stack_manager_t interface = {
   shut_down_stack_async,
   clean_up_stack_async,
 
-  get_stack_is_running
+  get_stack_is_running,
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+  start_up_radio,
+  shut_down_radio,
+
+  get_radio_is_running,
+#endif
 };
 
 const stack_manager_t *stack_manager_get_interface() {

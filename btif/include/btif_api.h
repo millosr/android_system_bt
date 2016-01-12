@@ -379,4 +379,10 @@ void btif_dm_read_energy_info();
 **
 *******************************************************************************/
 bt_status_t btif_config_hci_snoop_log(uint8_t enable);
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+void btif_enable_radio();
+void btif_disable_radio();
+#endif
+
 #endif /* BTIF_API_H */
