@@ -54,6 +54,12 @@ tBTA_SYS_CB bta_sys_cb;
 fixed_queue_t *btu_bta_alarm_queue;
 extern thread_t *bt_workqueue_thread;
 
+#ifdef BOARD_HAVE_FMRADIO_BCM
+static hash_map_t *bta_alarm_hash_map;
+static const size_t BTA_ALARM_HASH_MAP_SIZE = 17;
+static pthread_mutex_t bta_alarm_lock;
+#endif
+
 /* trace level */
 /* TODO Hard-coded trace levels -  Needs to be configurable */
 UINT8 appl_trace_level = BT_TRACE_LEVEL_WARNING; //APPL_INITIAL_TRACE_LEVEL;
@@ -174,6 +180,13 @@ void bta_sys_init(void)
 {
     memset(&bta_sys_cb, 0, sizeof(tBTA_SYS_CB));
 
+#ifdef BOARD_HAVE_FMRADIO_BCM
+    pthread_mutex_init(&bta_alarm_lock, NULL);
+
+    bta_alarm_hash_map = hash_map_new(BTA_ALARM_HASH_MAP_SIZE,
+            hash_function_pointer, NULL, (data_free_fn)alarm_free, NULL);
+#endif
+
     btu_bta_alarm_queue = fixed_queue_new(SIZE_MAX);
 
     alarm_register_processing_queue(btu_bta_alarm_queue, bt_workqueue_thread);
@@ -196,6 +209,10 @@ void bta_sys_free(void) {
     alarm_unregister_processing_queue(btu_bta_alarm_queue);
     fixed_queue_free(btu_bta_alarm_queue, NULL);
     btu_bta_alarm_queue = NULL;
+#ifdef BOARD_HAVE_FMRADIO_BCM
+    hash_map_free(bta_alarm_hash_map);
+    pthread_mutex_destroy(&bta_alarm_lock);
+#endif
 }
 
 /*******************************************************************************
@@ -599,6 +616,38 @@ void bta_sys_start_timer(alarm_t *alarm, period_ms_t interval, uint16_t event,
                        btu_bta_alarm_queue);
 }
 
+#ifdef BOARD_HAVE_FMRADIO_BCM
+void fmr_sys_start_timer(void *p_tle, UINT16 type, INT32 timeout_ms) {
+    assert(p_tle != NULL);
+
+    // Get the alarm for this p_tle.
+    pthread_mutex_lock(&bta_alarm_lock);
+    if (!hash_map_has_key(bta_alarm_hash_map, p_tle)) {
+      hash_map_set(bta_alarm_hash_map, p_tle, alarm_new("fmradio.legacy"));
+    }
+    pthread_mutex_unlock(&bta_alarm_lock);
+
+    alarm_t *alarm = hash_map_get(bta_alarm_hash_map, p_tle);
+    if (alarm == NULL) {
+      LOG_ERROR("%s unable to create alarm.", __func__);
+      return;
+    }
+
+    bta_sys_start_timer(alarm, timeout_ms, type, 0);
+}
+
+void fmr_sys_stop_timer(void *p_tle) {
+    assert(p_tle != NULL);
+
+    alarm_t *alarm = hash_map_get(bta_alarm_hash_map, p_tle);
+    if (alarm == NULL) {
+        LOG_DEBUG("%s expected alarm was not in bta alarm hash map.", __func__);
+        return;
+    }
+    alarm_cancel(alarm);
+}
+#endif
+
 /*******************************************************************************
 **
 ** Function         bta_sys_disable
@@ -626,7 +675,7 @@ void bta_sys_disable(tBTA_SYS_HW_MODULE module)
             return;
     }
 
-    for ( ; bta_id <= bta_id_max; bta_id++)
+    for ( ; bta_id < bta_id_max; bta_id++)
     {
         if (bta_sys_cb.reg[bta_id] != NULL)
         {
