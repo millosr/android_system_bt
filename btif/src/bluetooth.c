@@ -44,6 +44,9 @@
 #include <hardware/bt_rc.h>
 #include <hardware/bt_sdp.h>
 #include <hardware/bt_sock.h>
+#ifdef BOARD_HAVE_FMRADIO_BCM
+#include <hardware/bt_fm.h>
+#endif
 
 #include "bt_utils.h"
 #include "btif_api.h"
@@ -104,6 +107,10 @@ extern btrc_interface_t *btif_rc_get_interface();
 extern btrc_interface_t *btif_rc_ctrl_get_interface();
 /*SDP search client*/
 extern btsdp_interface_t *btif_sdp_get_interface();
+#ifdef BOARD_HAVE_FMRADIO_BCM
+/* fm */
+extern btfm_interface_t *btif_fm_get_interface();
+#endif
 
 /************************************************************************************
 **  Functions
@@ -409,6 +416,11 @@ static const void* get_profile_interface (const char *profile_id)
 
     if (is_profile(profile_id, BT_PROFILE_AV_RC_CTRL_ID))
         return btif_rc_ctrl_get_interface();
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+    if (is_profile(profile_id, BT_PROFILE_FM_ID))
+        return btif_fm_get_interface();
+#endif
 
     return NULL;
 }
