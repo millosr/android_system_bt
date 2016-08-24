@@ -1,5 +1,29 @@
 LOCAL_PATH:= $(call my-dir)
 
+ifeq ($(strip $(BOARD_HAVE_FMRADIO_BCM)),true)
+
+#
+# FM core lib
+#
+include $(CLEAR_VARS)
+LOCAL_MODULE := libbt-fmcore
+LOCAL_MODULE_CLASS :=  STATIC_LIBRARIES
+LOCAL_SRC_FILES := ../bta/fm/libbt-fmcore.a
+LOCAL_MODULE_SUFFIX := .a
+include $(BUILD_PREBUILT)
+
+#
+# FM rds lib
+#
+include $(CLEAR_VARS)
+LOCAL_MODULE := libbt-fmrds
+LOCAL_MODULE_CLASS :=  STATIC_LIBRARIES
+LOCAL_SRC_FILES := ../bta/fm/libbt-fmrds.a
+LOCAL_MODULE_SUFFIX := .a
+include $(BUILD_PREBUILT)
+
+endif
+
 # Bluetooth main HW module / shared library for target
 # ========================================================
 include $(CLEAR_VARS)
@@ -80,6 +104,16 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
     libbt-utils \
     libbtcore \
     libosi
+
+ifeq ($(strip $(BOARD_HAVE_FMRADIO_BCM)),true)
+LOCAL_CFLAGS += -DBOARD_HAVE_FMRADIO_BCM
+LOCAL_SRC_FILES += \
+    ../btif/src/btif_fm.c \
+    ../btif/co/bta_fm_co.c \
+    ../bta/fm/bta_fm_legacy.c \
+    ../gki_legacy/legacy.c
+LOCAL_STATIC_LIBRARIES += libbt-fmcore libbt-fmrds
+endif
 
 LOCAL_MODULE := bluetooth.default
 LOCAL_MODULE_RELATIVE_PATH := hw
