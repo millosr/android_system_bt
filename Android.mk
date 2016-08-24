@@ -44,6 +44,10 @@ bluetooth_CFLAGS += \
 bluetooth_CONLYFLAGS += -std=c99
 bluetooth_CPPFLAGS :=
 
+ifeq ($(strip $(BOARD_HAVE_FMRADIO_BCM)),true)
+bluetooth_CFLAGS += -DBOARD_HAVE_FMRADIO_BCM
+endif
+
 include $(call all-subdir-makefiles)
 
 # Cleanup our locals
