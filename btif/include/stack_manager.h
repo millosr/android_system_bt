@@ -29,6 +29,13 @@ typedef struct {
   void (*clean_up_stack)(void);
 
   bool (*get_stack_is_running)(void);
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+  bool (*start_up_radio)(void);
+  bool (*shut_down_radio)(void);
+
+  bool (*get_radio_is_running)(void);
+#endif
 } stack_manager_t;
 
 const stack_manager_t *stack_manager_get_interface();
