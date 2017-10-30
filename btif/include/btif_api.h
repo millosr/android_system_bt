@@ -422,4 +422,13 @@ bt_status_t btif_config_hci_snoop_log(uint8_t enable);
  ******************************************************************************/
 void btif_debug_bond_event_dump(int fd);
 
+/*******************************************************************************
+ * FM Radio
+ ******************************************************************************/
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+void btif_enable_radio();
+void btif_disable_radio();
+#endif
+
 #endif /* BTIF_API_H */

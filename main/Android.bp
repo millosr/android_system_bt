@@ -82,4 +82,14 @@ cc_library_shared {
     cflags: [
         "-DBUILDCFG",
     ],
+    product_variables: {
+        has_fmradio_bcm: {
+            cflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+            cppflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+            static_libs: [
+                "libbt-fmcore",
+                "libbt-fmrds",
+            ],
+        },
+    },
 }

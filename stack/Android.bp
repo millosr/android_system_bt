@@ -180,7 +180,13 @@ cc_library_static {
     required: [
         "libldacBT_enc",
         "libldacBT_abr",
-    ]
+    ],
+    product_variables: {
+        has_fmradio_bcm: {
+            cflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+            cppflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+        },
+    },
 }
 
 // Bluetooth stack unit tests for target
