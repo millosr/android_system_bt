@@ -171,7 +171,12 @@ extern tBTM_DEV_STATUS_CB* BTM_RegisterForDeviceStatusNotif(
  *                           registered.
  *
  ******************************************************************************/
-extern tBTM_STATUS BTM_RegisterForVSEvents(tBTM_VS_EVT_CB* p_cb,
+#ifdef BOARD_HAVE_FMRADIO_BCM
+extern "C"
+#else
+extern
+#endif
+tBTM_STATUS BTM_RegisterForVSEvents(tBTM_VS_EVT_CB* p_cb,
                                            bool is_register);
 
 /*******************************************************************************
@@ -181,7 +186,12 @@ extern tBTM_STATUS BTM_RegisterForVSEvents(tBTM_VS_EVT_CB* p_cb,
  * Description      Send a vendor specific HCI command to the controller.
  *
  ******************************************************************************/
-extern void BTM_VendorSpecificCommand(uint16_t opcode, uint8_t param_len,
+#ifdef BOARD_HAVE_FMRADIO_BCM
+extern "C"
+#else
+extern
+#endif
+void BTM_VendorSpecificCommand(uint16_t opcode, uint8_t param_len,
                                       uint8_t* p_param_buf,
                                       tBTM_VSC_CMPL_CB* p_cb);
 

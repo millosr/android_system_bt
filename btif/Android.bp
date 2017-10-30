@@ -96,6 +96,16 @@ cc_library_static {
         "libaudio-a2dp-hw-utils",
     ],
     cflags: ["-DBUILDCFG"],
+    product_variables: {
+        has_fmradio_bcm: {
+            cflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+            cppflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+            srcs: [
+                "src/btif_fm.cc",
+                "co/bta_fm_co.cc",
+            ],
+        },
+    },
 
 }
 

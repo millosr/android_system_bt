@@ -265,6 +265,14 @@ int btif_is_enabled(void) {
 
 void btif_init_ok(UNUSED_ATTR uint16_t event, UNUSED_ATTR char* p_param) {
   BTIF_TRACE_DEBUG("btif_task: received trigger stack init event");
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+  if (!event && stack_manager_get_interface()->get_radio_is_running()) {
+    future_ready(stack_manager_get_hack_future(), FUTURE_SUCCESS);
+    return;
+  }
+#endif
+
   btif_dm_load_ble_local_keys();
   BTA_EnableBluetooth(bte_dm_evt);
 }
@@ -487,6 +495,13 @@ bt_status_t btif_disable_bluetooth(void) {
 
 void btif_disable_bluetooth_evt(void) {
   LOG_INFO(LOG_TAG, "%s entered", __func__);
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+  if (stack_manager_get_interface()->get_radio_is_running()) {
+    future_ready(stack_manager_get_hack_future(), FUTURE_SUCCESS);
+    return;
+  }
+#endif
 
   bte_main_disable();
 

@@ -45,6 +45,9 @@
 #include <hardware/bt_rc.h>
 #include <hardware/bt_sdp.h>
 #include <hardware/bt_sock.h>
+#ifdef BOARD_HAVE_FMRADIO_BCM
+#include <hardware/bt_fm.h>
+#endif
 
 #include "bt_utils.h"
 #include "bta/include/bta_hf_client_api.h"
@@ -112,6 +115,11 @@ extern btsdp_interface_t* btif_sdp_get_interface();
 
 /* List all test interface here */
 extern btmcap_test_interface_t* stack_mcap_get_interface();
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+/* fm */
+extern btfm_interface_t *btif_fm_get_interface();
+#endif
 
 /*******************************************************************************
  *  Functions
@@ -372,6 +380,11 @@ static const void* get_profile_interface(const char* profile_id) {
 
   if (is_profile(profile_id, BT_TEST_INTERFACE_MCAP_ID))
     return stack_mcap_get_interface();
+
+#ifdef BOARD_HAVE_FMRADIO_BCM
+  if (is_profile(profile_id, BT_PROFILE_FM_ID))
+    return btif_fm_get_interface();
+#endif
 
   return NULL;
 }

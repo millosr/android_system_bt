@@ -26,6 +26,20 @@ cc_defaults {
     cflags: ["-DBUILDCFG"],
 }
 
+cc_prebuilt_library_static {
+    name: "libbt-fmcore",
+    srcs: [
+        "fm/libbt-fmcore.a",
+    ],
+}
+
+cc_prebuilt_library_static {
+    name: "libbt-fmrds",
+    srcs: [
+        "fm/libbt-fmrds.a",
+    ],
+}
+
 // BTA static library for target
 // ========================================================
 cc_library_static {
@@ -108,6 +122,16 @@ cc_library_static {
         "sys/bta_sys_main.cc",
         "sys/utl.cc",
     ],
+    product_variables: {
+        has_fmradio_bcm: {
+            cflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+            cppflags: ["-DBOARD_HAVE_FMRADIO_BCM"],
+            srcs: [
+                "fm/bta_fm_legacy.cc",
+                "fm/gki_legacy.cc",
+            ],
+        },
+    },
 }
 
 // bta unit tests for target
